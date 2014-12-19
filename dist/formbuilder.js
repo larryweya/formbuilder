@@ -59,7 +59,7 @@
       var $wrapper,
         _this = this;
       $wrapper = $(".fb-field-wrapper").filter((function(_, el) {
-        return $(el).data('cid') === _this.cid;
+        return $(el).data('fid') === _this.id;
       }));
       return $(".fb-field-wrapper").index($wrapper);
     };
@@ -81,7 +81,8 @@
     }
 
     FormbuilderCollection.prototype.initialize = function() {
-      return this.on('add', this.copyCidToModel);
+        // set the id attribute
+      return this.on('add', this.setIdOnModel);
     };
 
     FormbuilderCollection.prototype.model = FormbuilderModel;
@@ -90,9 +91,27 @@
       return model.indexInDOM();
     };
 
-    FormbuilderCollection.prototype.copyCidToModel = function(model) {
-      return model.attributes.cid = model.cid;
-    };
+      FormbuilderCollection.prototype.setIdOnModel = function(model) {
+          var nextId = this.getNextFieldId();
+          return model.set({id: 'f' + nextId});
+      };
+
+      FormbuilderCollection.prototype.getNextFieldId = function() {
+          // run through each model's id and figure out the max id
+          // todo: cache the next id the first time we do this
+          return this.reduce(function(carry, model){
+              var modelId = model.id || '';
+              // only consider ids that match our format /f[0-9]+/
+              if(modelId.match(/f[0-9]+/) !== null)
+              {
+                  // remove the id's prefix and convert the int part to an integer 'f12' becomes 12
+                  var id = parseInt(modelId.replace(/[a-zA-Z]+/, ''));
+                  var max = Math.max(carry, id);
+                  return max + 1;
+              }
+              return carry;
+          }, 1);
+      };
 
     return FormbuilderCollection;
 
@@ -121,7 +140,7 @@
     };
 
     ViewFieldView.prototype.render = function() {
-      this.$el.addClass('response-field-' + this.model.get(Formbuilder.options.mappings.FIELD_TYPE)).data('cid', this.model.cid).html(Formbuilder.templates["view/base" + (!this.model.is_input() ? '_non_input' : '')]({
+      this.$el.addClass('response-field-' + this.model.get(Formbuilder.options.mappings.FIELD_TYPE)).data('fid', this.model.id).html(Formbuilder.templates["view/base" + (!this.model.is_input() ? '_non_input' : '')]({
         rf: this.model
       }));
       return this;
@@ -448,11 +467,11 @@
     BuilderView.prototype.createAndShowEditView = function(model) {
       var $newEditEl, $responseFieldEl;
       $responseFieldEl = this.$el.find(".fb-field-wrapper").filter(function() {
-        return $(this).data('cid') === model.cid;
+        return $(this).data('fid') === model.id;
       });
       $responseFieldEl.addClass('editing').siblings('.fb-field-wrapper').removeClass('editing');
       if (this.editView) {
-        if (this.editView.model.cid === model.cid) {
+        if (this.editView.model.id === model.id) {
           this.$el.find(".fb-tabs a[data-target=\"#editField\"]").click();
           this.scrollLeftWrapper($responseFieldEl);
           return;
@@ -1042,7 +1061,7 @@ __p += '\n        <a data-field-type="' +
 ((__t = ( f.addButton )) == null ? '' : __t) +
 '\n        </a>\n      ';
  }); ;
-__p += '\n    </div>\n\n    <div class=\'section\'>\n      ';
+__p += '\n    </div>\n\n    <!--div class=\'section\'>\n      ';
  _.each(_.sortBy(Formbuilder.nonInputFields, 'order'), function(f){ ;
 __p += '\n        <a data-field-type="' +
 ((__t = ( f.field_type )) == null ? '' : __t) +
@@ -1052,7 +1071,7 @@ __p += '\n        <a data-field-type="' +
 ((__t = ( f.addButton )) == null ? '' : __t) +
 '\n        </a>\n      ';
  }); ;
-__p += '\n    </div>\n  </div>\n</div>\n';
+__p += '\n    </div -->\n  </div>\n</div>';
 
 }
 return __p
